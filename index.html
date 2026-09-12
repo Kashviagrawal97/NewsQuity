@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NewsQuity - Equity Research Tool</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- FontAwesome for Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- TradingView API for Live Graphs -->
+    <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen relative">
+
+    <div class="max-w-4xl mx-auto px-4 py-12">
+        
+        <!-- Header -->
+        <header class="text-center mb-10 relative">
+            <div class="flex justify-between items-center mb-4">
+                <div class="inline-flex items-center gap-2 text-indigo-400 text-sm font-semibold tracking-wider uppercase bg-indigo-950/60 border border-indigo-800/50 px-3 py-1 rounded-full">
+                    <i class="fa-solid fa-bolt"></i> Instant Stock Sentiment
+                </div>
+                <button id="openHistoryBtn" class="bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-xs font-semibold px-3.5 py-2 rounded-xl transition flex items-center gap-2 cursor-pointer">
+                    <i class="fa-solid fa-clock-rotate-left text-indigo-400"></i> Past Reports
+                </button>
+            </div>
+            
+            <h1 class="text-3xl font-extrabold text-white tracking-tight sm:text-5xl max-w-2xl mx-auto leading-tight">
+                Stop Reading 20 News Articles. <br>
+                <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-emerald-400">Get Instant AI Stock Signals.</span>
+            </h1>
+            
+            <p class="text-slate-400 mt-3 text-base sm:text-lg max-w-xl mx-auto">
+                NewsQuity scans live market news, filters duplicate hype, and delivers a 10-second equity research summary.
+            </p>
+        </header>
+
+        <!-- Search Form & Quick Chips -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-2xl mb-8">
+            <form id="researchForm" class="flex flex-col sm:flex-row gap-3">
+                <div class="relative flex-1">
+                    <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                    <input 
+                        type="text" 
+                        id="companyInput" 
+                        placeholder="Enter company or stock name (e.g. Apple, Tesla, Reliance)..." 
+                        required
+                        class="w-full bg-slate-950 text-white placeholder-slate-500 pl-11 pr-4 py-3.5 rounded-xl border border-slate-800 focus:outline-none focus:border-indigo-500 transition"
+                    >
+                </div>
+                <button 
+                    type="submit" 
+                    id="submitBtn"
+                    class="bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-6 py-3.5 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                    <span>Analyze News</span>
+                    <i class="fa-solid fa-arrow-right text-xs"></i>
+                </button>
+            </form>
+
+            <!-- Quick Stock Chips -->
+            <div class="flex flex-wrap items-center gap-2 mt-4 pt-3 border-t border-slate-800/60 text-xs text-slate-400">
+                <span class="font-medium text-slate-500">Popular Stocks:</span>
+                <button type="button" class="stock-chip bg-slate-950 hover:bg-slate-800 hover:text-indigo-400 text-slate-300 px-3 py-1 rounded-lg border border-slate-800 transition cursor-pointer" data-symbol="Tesla">Tesla</button>
+                <button type="button" class="stock-chip bg-slate-950 hover:bg-slate-800 hover:text-indigo-400 text-slate-300 px-3 py-1 rounded-lg border border-slate-800 transition cursor-pointer" data-symbol="Apple">Apple</button>
+                <button type="button" class="stock-chip bg-slate-950 hover:bg-slate-800 hover:text-indigo-400 text-slate-300 px-3 py-1 rounded-lg border border-slate-800 transition cursor-pointer" data-symbol="NVIDIA">NVIDIA</button>
+                <button type="button" class="stock-chip bg-slate-950 hover:bg-slate-800 hover:text-indigo-400 text-slate-300 px-3 py-1 rounded-lg border border-slate-800 transition cursor-pointer" data-symbol="Reliance Industries">Reliance</button>
+                <button type="button" class="stock-chip bg-slate-950 hover:bg-slate-800 hover:text-indigo-400 text-slate-300 px-3 py-1 rounded-lg border border-slate-800 transition cursor-pointer" data-symbol="Tata Motors">Tata Motors</button>
+            </div>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loadingState" class="hidden text-center py-12 bg-slate-900/50 border border-slate-800/80 rounded-2xl mb-8">
+            <div class="inline-block animate-spin rounded-full h-10 w-10 border-4 border-indigo-500 border-t-transparent mb-4"></div>
+            <p class="text-slate-200 font-medium text-lg">Analyzing news pipeline...</p>
+            <p class="text-slate-500 text-sm mt-1">Searching web sources, filtering duplicate noise, and synthesizing AI research report.</p>
+        </div>
+
+        <!-- Results Section -->
+        <div id="resultsCard" class="hidden bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-2xl space-y-6">
+            
+            <!-- Company & Sentiment Top Header -->
+            <div class="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-6">
+                <div>
+                    <span class="text-xs uppercase tracking-wider text-slate-500 font-semibold">Target Company</span>
+                    <h2 id="companyName" class="text-3xl font-bold text-white capitalize"></h2>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <!-- Action Buttons -->
+                    <button id="copyReportBtn" class="bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800 text-xs px-3 py-2 rounded-xl transition flex items-center gap-1.5 cursor-pointer">
+                        <i class="fa-regular fa-copy"></i> <span>Copy</span>
+                    </button>
+
+                    <!-- Sentiment Badge & Info -->
+                    <div class="relative group flex items-center gap-2">
+                        <div id="sentimentBadge" class="px-4 py-1.5 rounded-full font-semibold text-sm flex items-center gap-2 border"></div>
+                        <button type="button" class="text-slate-500 hover:text-slate-300 text-sm p-1 transition cursor-pointer" title="What does this mean?">
+                            <i class="fa-solid fa-circle-info"></i>
+                        </button>
+                        
+                        <div class="absolute right-0 top-10 hidden group-hover:block z-20 w-72 p-3 bg-slate-950 border border-slate-800 rounded-xl shadow-2xl text-xs space-y-2 text-slate-300">
+                            <p class="font-semibold text-white border-b border-slate-800 pb-1">Sentiment Terms Explained:</p>
+                            <p><strong class="text-emerald-400">Bullish (Positive):</strong> Positive news indicating potential growth.</p>
+                            <p><strong class="text-rose-400">Bearish (Negative):</strong> Concerns or bad news suggesting decline.</p>
+                            <p><strong class="text-slate-300">Neutral:</strong> Balanced news with no strong directional impact.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TradingView Live Graph Container -->
+            <div id="graphSection" class="w-full h-[350px] border border-slate-800 rounded-xl overflow-hidden relative bg-slate-950">
+                <div id="tv_chart_container" class="absolute inset-0"></div>
+            </div>
+
+            <!-- Visual Sentiment Gauge -->
+            <div id="gaugeContainer" class="bg-slate-950/60 border border-slate-800/80 p-4 rounded-xl space-y-2">
+                <div class="flex justify-between text-xs font-semibold">
+                    <span class="text-rose-400"><i class="fa-solid fa-arrow-down-long"></i> Bearish</span>
+                    <span class="text-slate-400">Neutral</span>
+                    <span class="text-emerald-400">Bullish <i class="fa-solid fa-arrow-up-long"></i></span>
+                </div>
+                <div class="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden relative">
+                    <div id="gaugeBar" class="h-full rounded-full transition-all duration-1000 ease-out" style="width: 50%;"></div>
+                </div>
+                <div class="flex justify-between items-center text-[11px] text-slate-400 pt-1">
+                    <span>Market Sentiment Gauge</span>
+                    <span id="gaugeValue" class="font-semibold text-white">50% Neutral</span>
+                </div>
+            </div>
+
+            <!-- Executive Summary -->
+            <div>
+                <h3 class="text-sm uppercase tracking-wider text-slate-400 font-semibold mb-2 flex items-center gap-2">
+                    <i class="fa-solid fa-align-left text-indigo-400"></i> Executive Summary
+                </h3>
+                <p id="summaryText" class="text-slate-300 leading-relaxed text-base bg-slate-950/50 p-4 rounded-xl border border-slate-800/60"></p>
+            </div>
+
+            <!-- Key Takeaways -->
+            <div>
+                <h3 class="text-sm uppercase tracking-wider text-slate-400 font-semibold mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-list-check text-indigo-400"></i> Key Takeaways
+                </h3>
+                <ul id="keyPointsList" class="space-y-2.5"></ul>
+            </div>
+
+            <!-- Sources -->
+            <div class="border-t border-slate-800 pt-6">
+                <h3 class="text-sm uppercase tracking-wider text-slate-400 font-semibold mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-link text-indigo-400"></i> Referenced Sources
+                </h3>
+                <div id="sourcesList" class="flex flex-wrap gap-2"></div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- History Modal Backdrop -->
+    <div id="historyModal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex justify-end transition-opacity">
+        <div class="bg-slate-900 border-l border-slate-800 w-full max-w-md h-full p-6 flex flex-col shadow-2xl">
+            <div class="flex justify-between items-center pb-4 border-b border-slate-800">
+                <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-clock-rotate-left text-indigo-400"></i> Saved Reports History
+                </h3>
+                <button id="closeHistoryBtn" class="text-slate-400 hover:text-white p-1 cursor-pointer">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+            <div id="historyList" class="flex-1 overflow-y-auto my-4 space-y-3 pr-1"></div>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('researchForm');
+        const companyInput = document.getElementById('companyInput');
+        const submitBtn = document.getElementById('submitBtn');
+        const loadingState = document.getElementById('loadingState');
+        const resultsCard = document.getElementById('resultsCard');
+
+        const historyModal = document.getElementById('historyModal');
+        const openHistoryBtn = document.getElementById('openHistoryBtn');
+        const closeHistoryBtn = document.getElementById('closeHistoryBtn');
+        const historyList = document.getElementById('historyList');
+
+        const copyReportBtn = document.getElementById('copyReportBtn');
+
+        let currentReportData = null;
+
+        // Form Submit
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const company = companyInput.value.trim();
+            if (!company) return;
+            await runAnalysis(company);
+        });
+
+        // Quick Stock Chips Handler
+        document.querySelectorAll('.stock-chip').forEach(chip => {
+            chip.addEventListener('click', () => {
+                const symbol = chip.getAttribute('data-symbol');
+                companyInput.value = symbol;
+                runAnalysis(symbol);
+            });
+        });
+
+        async function runAnalysis(company) {
+            loadingState.classList.remove('hidden');
+            resultsCard.classList.add('hidden');
+            submitBtn.disabled = true;
+
+            try {
+                const response = await fetch('/research', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ company: company })
+                });
+
+                if (!response.ok) throw new Error('Failed to fetch research report.');
+
+                const data = await response.json();
+                renderReport(data);
+
+            } catch (err) {
+                alert('An error occurred while generating the report. Please try again.');
+                console.error(err);
+            } finally {
+                loadingState.classList.add('hidden');
+                submitBtn.disabled = false;
+            }
+        }
+
+        // --- TRADINGVIEW GRAPH LOGIC ---
+        
+        // Helper: Convert company name to Ticker Symbol
+        function getTickerSymbol(companyName) {
+            const name = companyName.toLowerCase().trim();
+            // Dictionary for popular stocks
+            const mappings = {
+                'tesla': 'NASDAQ:TSLA',
+                'apple': 'NASDAQ:AAPL',
+                'nvidia': 'NASDAQ:NVDA',
+                'nvda': 'NASDAQ:NVDA',
+                'reliance': 'BSE:RELIANCE',
+                'reliance industries': 'BSE:RELIANCE',
+                'tata motors': 'BSE:TATAMOTORS',
+                'tata': 'BSE:TATAMOTORS',
+                'amazon': 'NASDAQ:AMZN',
+                'google': 'NASDAQ:GOOGL',
+                'microsoft': 'NASDAQ:MSFT',
+                'meta': 'NASDAQ:META',
+                'hdfc': 'BSE:HDFCBANK'
+            };
+            
+            // If we have it in our dictionary, return it.
+            if (mappings[name]) return mappings[name];
+            
+            // Fallback: Just take the first word and assume it's a NASDAQ ticker
+            const firstWord = name.split(' ')[0].toUpperCase();
+            return `NASDAQ:${firstWord}`;
+        }
+
+        // Render Graph Function
+        function renderGraph(companyName) {
+            const ticker = getTickerSymbol(companyName);
+            
+            // Clear previous graph if any
+            document.getElementById('tv_chart_container').innerHTML = '';
+            
+            new TradingView.widget({
+                "autosize": true,
+                "symbol": ticker,
+                "interval": "D", // Daily candles
+                "timezone": "Etc/UTC",
+                "theme": "dark",
+                "style": "3", // 1 = Candles, 2 = Line, 3 = Area
+                "locale": "en",
+                "enable_publishing": false,
+                "backgroundColor": "#020617", // Matches slate-950
+                "gridColor": "#1e293b", // Matches slate-800
+                "hide_top_toolbar": true,
+                "hide_legend": false,
+                "save_image": false,
+                "container_id": "tv_chart_container"
+            });
+        }
+
+
+        // History Modal Handlers
+        openHistoryBtn.addEventListener('click', async () => {
+            historyModal.classList.remove('hidden');
+            await fetchHistory();
+        });
+
+        closeHistoryBtn.addEventListener('click', () => historyModal.classList.add('hidden'));
+        historyModal.addEventListener('click', (e) => {
+            if (e.target === historyModal) historyModal.classList.add('hidden');
+        });
+
+        async function fetchHistory() {
+            historyList.innerHTML = `<div class="text-center text-slate-500 py-8"><i class="fa-solid fa-spinner animate-spin text-xl mb-2"></i><p>Loading history...</p></div>`;
+            try {
+                const res = await fetch('/history');
+                if (!res.ok) throw new Error(`Server returned status ${res.status}`);
+                
+                const cachedHistory = await res.json();
+                
+                if (!Array.isArray(cachedHistory) || cachedHistory.length === 0) {
+                    historyList.innerHTML = `<p class="text-slate-500 text-sm text-center py-8">No past reports found in database.</p>`;
+                    return;
+                }
+
+                historyList.innerHTML = '';
+                cachedHistory.forEach((item) => {
+                    const card = document.createElement('div');
+                    card.className = "bg-slate-950 hover:bg-slate-800/80 border border-slate-800 rounded-xl p-4 transition cursor-pointer flex justify-between items-center mb-3";
+                    
+                    const sentiment = (item.sentiment || 'neutral').toLowerCase();
+                    const sentimentColor = sentiment === 'bullish' ? 'text-emerald-400 border-emerald-800' :
+                                         sentiment === 'bearish' ? 'text-rose-400 border-rose-800' : 'text-slate-400 border-slate-700';
+
+                    let dateStr = item.created_at || '';
+                    if (dateStr && !dateStr.endsWith('Z') && !dateStr.includes('+')) {
+                        dateStr += 'Z';
+                    }
+
+                    const createdDate = dateStr ? new Date(dateStr).toLocaleDateString(undefined, {
+                        month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                    }) : '';
+
+                    card.innerHTML = `
+                        <div>
+                            <h4 class="font-bold text-white capitalize text-base">${item.company}</h4>
+                            <p class="text-slate-500 text-xs mt-1">${createdDate}</p>
+                        </div>
+                        <div class="text-right flex items-center gap-3">
+                            <span class="text-xs uppercase px-2 py-0.5 rounded border ${sentimentColor}">${sentiment}</span>
+                            <i class="fa-solid fa-chevron-right text-slate-600 text-xs"></i>
+                        </div>
+                    `;
+
+                    card.addEventListener('click', () => {
+                        renderReport(item);
+                        historyModal.classList.add('hidden');
+                    });
+
+                    historyList.appendChild(card);
+                });
+
+            } catch (err) {
+                console.error("History fetch error:", err);
+                historyList.innerHTML = `<p class="text-rose-400 text-sm text-center py-8">Failed to load history.</p>`;
+            }
+        }
+
+        function renderReport(data) {
+            currentReportData = data;
+            
+            const finalCompanyName = data.company || companyInput.value;
+            document.getElementById('companyName').textContent = finalCompanyName;
+            document.getElementById('summaryText').textContent = data.summary;
+
+            // Render the TradingView Chart using the company name
+            renderGraph(finalCompanyName);
+
+            // Sentiment Badge & Gauge Progress
+            const sentimentBadge = document.getElementById('sentimentBadge');
+            const gaugeBar = document.getElementById('gaugeBar');
+            const gaugeValue = document.getElementById('gaugeValue');
+            const sentiment = (data.sentiment || 'neutral').toLowerCase();
+            
+            if (sentiment === 'bullish') {
+                sentimentBadge.className = "px-4 py-1.5 rounded-full font-semibold text-sm flex items-center gap-2 border bg-emerald-950/60 border-emerald-700/60 text-emerald-400";
+                sentimentBadge.innerHTML = `<i class="fa-solid fa-arrow-trend-up"></i> Bullish (Positive)`;
+                gaugeBar.className = "h-full rounded-full transition-all duration-1000 ease-out bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.5)]";
+                gaugeBar.style.width = "85%";
+                gaugeValue.textContent = "85% Bullish Outlook";
+            } else if (sentiment === 'bearish') {
+                sentimentBadge.className = "px-4 py-1.5 rounded-full font-semibold text-sm flex items-center gap-2 border bg-rose-950/60 border-rose-700/60 text-rose-400";
+                sentimentBadge.innerHTML = `<i class="fa-solid fa-arrow-trend-down"></i> Bearish (Negative)`;
+                gaugeBar.className = "h-full rounded-full transition-all duration-1000 ease-out bg-rose-500 shadow-[0_0_12px_rgba(244,63,94,0.5)]";
+                gaugeBar.style.width = "15%";
+                gaugeValue.textContent = "15% Bearish Outlook";
+            } else {
+                sentimentBadge.className = "px-4 py-1.5 rounded-full font-semibold text-sm flex items-center gap-2 border bg-slate-800 border-slate-700 text-slate-300";
+                sentimentBadge.innerHTML = `<i class="fa-solid fa-minus"></i> Neutral`;
+                gaugeBar.className = "h-full rounded-full transition-all duration-1000 ease-out bg-slate-400";
+                gaugeBar.style.width = "50%";
+                gaugeValue.textContent = "50% Neutral Outlook";
+            }
+
+            // Key Points
+            const keyPointsList = document.getElementById('keyPointsList');
+            keyPointsList.innerHTML = '';
+            if (data.key_points && data.key_points.length > 0) {
+                data.key_points.forEach(point => {
+                    const li = document.createElement('li');
+                    li.className = "flex items-start gap-3 bg-slate-950/30 p-3 rounded-lg border border-slate-800/40 text-slate-300 text-sm";
+                    li.innerHTML = `<i class="fa-solid fa-angle-right text-indigo-400 mt-0.5"></i> <span>${point}</span>`;
+                    keyPointsList.appendChild(li);
+                });
+            } else {
+                keyPointsList.innerHTML = `<li class="text-slate-500 text-sm italic">No key points extracted.</li>`;
+            }
+
+            // Sources
+            const sourcesList = document.getElementById('sourcesList');
+            sourcesList.innerHTML = '';
+            if (data.sources && data.sources.length > 0) {
+                data.sources.forEach((url, idx) => {
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.target = "_blank";
+                    a.rel = "noopener noreferrer";
+                    a.className = "text-xs bg-slate-950 hover:bg-slate-800 text-slate-400 hover:text-indigo-400 border border-slate-800 px-3 py-1.5 rounded-lg transition flex items-center gap-1.5";
+                    a.innerHTML = `<i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i> Source ${idx + 1}`;
+                    sourcesList.appendChild(a);
+                });
+            } else {
+                sourcesList.innerHTML = `<span class="text-slate-500 text-xs italic">No external sources linked.</span>`;
+            }
+
+            resultsCard.classList.remove('hidden');
+        }
+
+        // Copy Text Functionality
+        copyReportBtn.addEventListener('click', () => {
+            if (!currentReportData) return;
+            const textToCopy = `NewsQuity Report: ${currentReportData.company.toUpperCase()}\n` +
+                `Sentiment: ${currentReportData.sentiment.toUpperCase()}\n\n` +
+                `SUMMARY:\n${currentReportData.summary}\n\n` +
+                `KEY TAKEAWAYS:\n` + (currentReportData.key_points || []).map(p => `- ${p}`).join('\n');
+
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                const originalHtml = copyReportBtn.innerHTML;
+                copyReportBtn.innerHTML = `<i class="fa-solid fa-check text-emerald-400"></i> <span class="text-emerald-400">Copied!</span>`;
+                setTimeout(() => copyReportBtn.innerHTML = originalHtml, 2000);
+            });
+        });
+    </script>
+</body>
+</html>

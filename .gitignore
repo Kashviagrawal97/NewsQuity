@@ -1,0 +1,8 @@
+.env
+__pycache__/
+.DS_store
+NewsEquityVenv/
+*.sqlite
+*.sqlite3
+*.db
+.vscode/

@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+pydantic
+ddgs
+beautifulsoup4
+requests
+langchain-core
+langchain-openai
