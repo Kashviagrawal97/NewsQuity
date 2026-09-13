@@ -5,4 +5,4 @@ ddgs
 beautifulsoup4
 requests
 langchain-core
-langchain-openai
+langchain-google-genai
