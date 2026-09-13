@@ -9,7 +9,6 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from dotenv import load_dotenv
 import os
 load_dotenv()
-# from langchain_community.llms import LlamaCpp
 
 REPORT_PROMPT = ChatPromptTemplate.from_template("""
 You are an equity research assistant. Based only on the news articles
@@ -32,18 +31,6 @@ def _build_llm() -> ChatGoogleGenerativeAI:
         temperature=0,
         api_key = os.getenv("OPENAI_API_KEY"),
     )
-
-# model_path = "/Users/kashviagrawal92/.cache/huggingface/hub/models--ggml-org--Qwen3-4B-GGUF/snapshots/2f3b082b1356a6123f7ed71e65aea340da25d53c/Qwen3-4B-Q4_K_M.gguf"
-
-# # Local Qwen LLM initialization via Llama.cpp
-# llm = LlamaCpp(
-#     model_path=model_path,
-#     temperature=0.3,         # Thoda controlled aur factual response ke liye
-#     max_tokens=2000,         # Max output length
-#     n_ctx=4096,              # Context window size
-#     n_gpu_layers=-1,         # -1 ka matlab saare layers Mac ke GPU (Metal) par chalenge (Super Fast!)
-#     verbose=False
-# )
 
 def generate_report(company: str, articles: list[dict]) -> dict:
     """
