@@ -24,14 +24,14 @@ NewsQuity is a fast, AI-powered equity research platform that stops you from rea
 
 To get this project running on your local machine, run these commands in your terminal:
 
-\`\`\`bash
+```bash
 # 1. Clone the repository
-git clone https://github.com/yourusername/NewsQuity.git
-cd NewsQuity
+git clone https://github.com/yourusername/NewsQuity.gitcd NewsQuity
 
 # 2. Create and activate the virtual environment
 python3 -m venv NewsEquityVenv
-source NewsEquityVenv/bin/activate   # (For Windows: NewsEquityVenv\Scripts\activate)
+source NewsEquityVenv/bin/activate
+# On Windows use: NewsEquityVenv\Scripts\activate
 
 # 3. Install required dependencies
 pip install -r requirements.txt
@@ -42,27 +42,24 @@ echo "OPENAI_API_KEY=your_gemini_api_key_here" > .env
 
 # 5. Run the application
 uvicorn api:app --reload
-\`\`\`
+```
 
-The app will be available at **http://localhost:8000**
+The app will be available at http://localhost:8000
 
 ## 🐳 Setup & Installation (Docker)
 
-\`\`\`bash
+```bash
 # 1. Pull the image from Docker Hub
 docker pull kashvibuilds/newsquity
 
 # 2. Create a .env file in your working directory
-echo "OPENAI_API_KEY=your_gemini_api_key_here" > .env
-
-# 3. Run the container (maps port 8000 and injects your API key)
+echo "OPENAI_API_KEY=your_gemini_api_key_here" > .env# 3. Run the container (maps port 8000 and injects your API key)
 docker run -p 8000:8000 --env-file .env kashvibuilds/newsquity
 
-# 4. Open the app
-# Visit http://localhost:8000 in your browser
-\`\`\`
+# 4. Open the app at http://localhost:8000
+```
 
-> ⚠️ The `.env` file is intentionally **not** bundled inside the Docker image for security reasons. Every user running this image must supply their own `.env` file at runtime via `--env-file`, otherwise API calls will fail with a missing-key error.
+> ⚠️ The `.env` file is intentionally not bundled inside the Docker image for security reasons. Every user running this image must supply their own `.env` file at runtime via `--env-file`, otherwise API calls will fail with a missing-key error.
 
 ## 📊 Usage
 
